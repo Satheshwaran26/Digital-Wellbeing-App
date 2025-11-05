@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#E6000000"
+    android:gravity="center"
+    android:padding="32dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Close Button -->
+    <TextView
+        android:id="@+id/closeButton"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="end|top"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="0dp"
+        android:background="#44FFFFFF"
+        android:gravity="center"
+        android:text="✕"
+        android:textColor="#FFFFFF"
+        android:textSize="40sp"
+        android:textStyle="bold"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="8dp" />
+
+    <!-- Trophy Icon -->
+    <TextView
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_gravity="center"
+        android:background="@android:drawable/star_big_on"
+        android:gravity="center"
+        android:text="🏆"
+        android:textSize="72sp" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="24dp" />
+
+    <!-- Milestone Title -->
+    <TextView
+        android:id="@+id/milestoneTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="MILESTONE ACHIEVED!"
+        android:textSize="20sp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:letterSpacing="0.1" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="16dp" />
+
+    <!-- Percentage -->
+    <TextView
+        android:id="@+id/milestonePercentage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="70%"
+        android:textSize="72sp"
+        android:textColor="#FFD700"
+        android:textStyle="bold" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="16dp" />
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/milestoneMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="You've used 70% of your time limit"
+        android:textSize="18sp"
+        android:textColor="#FFFFFF"
+        android:textAlignment="center"
+        android:gravity="center" />
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="32dp" />
+
+    <!-- Usage Stats -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#1AFFFFFF"
+        android:padding="20dp"
+        android:gravity="center">
+
+        <TextView
+            android:text="COMBINED USAGE"
+            android:textSize="12sp"
+            android:textColor="#AAFFFFFF"
+            android:textStyle="bold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="8dp" />
+
+        <TextView
+            android:id="@+id/usageStats"
+            android:text="42s / 60s"
+            android:textSize="24sp"
+            android:textColor="#FFD700"
+            android:textStyle="bold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="32dp" />
+
+    <!-- Milestone Badges -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginEnd="24dp">
+
+            <TextView
+                android:id="@+id/badge30"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:background="@android:drawable/star_big_on"
+                android:text="30%"
+                android:textSize="16sp"
+                android:textColor="#2E7D32"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:text="30%"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:layout_marginTop="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginEnd="24dp">
+
+            <TextView
+                android:id="@+id/badge70"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:background="@android:drawable/star_big_on"
+                android:text="70%"
+                android:textSize="16sp"
+                android:textColor="#F57C00"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:text="70%"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:layout_marginTop="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/badge100"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:background="@android:drawable/star_big_on"
+                android:text="100%"
+                android:textSize="16sp"
+                android:textColor="#CC3333"
+                android:textStyle="bold"
+                android:gravity="center" />
+
+            <TextView
+                android:text="100%"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:layout_marginTop="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="32dp" />
+
+    <!-- Dismiss Text -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Tap ✕ to dismiss"
+        android:textSize="14sp"
+        android:textColor="#88FFFFFF" />
+
+</LinearLayout>
+
