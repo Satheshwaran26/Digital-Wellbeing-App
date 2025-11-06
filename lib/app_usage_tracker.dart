@@ -100,16 +100,7 @@ class AppUsageTracker {
   // Combined time limit (in seconds) for ALL monitored apps
   int _combinedTimeLimit = 60; // Default: 1 minute for all apps combined
   
-  // Callback for milestone reached
-  Function(int milestoneValue, int currentUsage, int totalLimit)? onMilestoneReached;
-  
-  // Track which milestones have been shown to avoid duplicates
-  final Set<int> _shownMilestones = {};
-  
-  // Pending milestone to show when app comes to foreground
-  int? _pendingMilestone;
-  int? _pendingCurrentUsage;
-  int? _pendingTotalLimit;
+  // Milestone tracking is now handled in native Kotlin code
  
   AppUsageTracker._();
 
@@ -177,8 +168,26 @@ class AppUsageTracker {
   Future<void> _startTracking() async {
     if (!_isInitialized) return;
     
+    // Ensure monitoring service is running for milestone overlays
+    await _ensureMonitoringServiceRunning();
+    
     // Start periodic foreground app checking
     _checkForegroundApp();
+  }
+  
+  Future<void> _ensureMonitoringServiceRunning() async {
+    try {
+      // Check if overlay permission is granted
+      final hasOverlayPermission = await checkOverlayPermission();
+      if (hasOverlayPermission) {
+        await startMonitoringService();
+        debugPrint('✅ Monitoring service started for milestone overlays');
+      } else {
+        debugPrint('⚠️ Overlay permission not granted - milestones will show as notifications only');
+      }
+    } catch (e) {
+      debugPrint('Error starting monitoring service: $e');
+    }
   }
 
   Future<void> _checkForegroundApp() async {
@@ -314,17 +323,7 @@ class AppUsageTracker {
     }
   }
   
-  // Bring the app to foreground (redirect from monitored app)
-  Future<void> _bringAppToForeground() async {
-    try {
-      debugPrint('🔄 Bringing app to foreground for milestone notification...');
-      await _channel.invokeMethod('bringAppToForeground');
-    } catch (e) {
-      debugPrint('Error bringing app to foreground: $e');
-      // Continue anyway - milestone will show when user manually returns
-    }
-  }
-  
+
   // Check if Usage Stats permission is granted
   Future<bool> checkUsageStatsPermission() async {
     try {
@@ -367,6 +366,46 @@ class AppUsageTracker {
     }
   }
   
+  // Request both usage stats and overlay permissions
+  Future<Map<String, bool>> requestAllPermissions() async {
+    debugPrint('📋 Requesting all required permissions...');
+    
+    // Check current permissions
+    final hasUsageStats = await checkUsageStatsPermission();
+    final hasOverlay = await checkOverlayPermission();
+    
+    debugPrint('Current permissions - Usage Stats: $hasUsageStats, Overlay: $hasOverlay');
+    
+    // Request usage stats permission if not granted
+    if (!hasUsageStats) {
+      debugPrint('🔓 Requesting Usage Stats permission...');
+      await openUsageStatsSettings();
+    }
+    
+    // Request overlay permission if not granted
+    if (!hasOverlay) {
+      debugPrint('🔓 Requesting Overlay permission...');
+      await requestOverlayPermission();
+    }
+    
+    // Wait a moment for permissions to be processed
+    await Future.delayed(const Duration(seconds: 1));
+    
+    // Check permissions again after requests
+    final finalUsageStats = await checkUsageStatsPermission();
+    final finalOverlay = await checkOverlayPermission();
+    
+    final result = {
+      'usageStats': finalUsageStats,
+      'overlay': finalOverlay,
+      'allGranted': finalUsageStats && finalOverlay,
+    };
+    
+    debugPrint('Final permissions - Usage Stats: $finalUsageStats, Overlay: $finalOverlay, All granted: ${result['allGranted']}');
+    
+    return result;
+  }
+  
   // Start monitoring service (shows overlay when using other apps)
   Future<void> startMonitoringService() async {
     try {
@@ -391,6 +430,16 @@ class AppUsageTracker {
       debugPrint('Monitoring service stopped');
     } catch (e) {
       debugPrint('Error stopping monitoring service: $e');
+    }
+  }
+  
+  // Test overlay functionality
+  Future<void> testOverlay() async {
+    try {
+      await _channel.invokeMethod('testOverlay');
+      debugPrint('✅ Test overlay triggered');
+    } catch (e) {
+      debugPrint('Error testing overlay: $e');
     }
   }
   
@@ -492,18 +541,7 @@ class AppUsageTracker {
   }
   
   // Get milestone data (for display on milestone page)
-  Future<Map<String, dynamic>> getMilestoneData() async {
-    final apps = await getMonitoredApps();
-    final totalUsage = await getTotalUsage();
-    final milestoneData = await checkCombinedMilestone();
-    
-    return {
-      'apps': apps,
-      'totalUsage': totalUsage,
-      'totalLimit': _combinedTimeLimit,
-      ...milestoneData,
-    };
-  }
+
 
   Future<void> _saveMonitoredApps(List<MonitoredApp> apps) async {
     if (!_isInitialized && !_initFailed) {
@@ -590,86 +628,24 @@ class AppUsageTracker {
   
   Future<void> _checkCombinedMilestoneAndNotify(int totalUsage) async {
     try {
-      // Calculate percentage
-      final percentage = _combinedTimeLimit > 0 
-          ? (totalUsage / _combinedTimeLimit) * 100.0 
-          : 0.0;
-      
-      // Check for new milestones
-      int? newMilestone;
-      if (percentage >= 100.0 && !_shownMilestones.contains(100)) {
-        newMilestone = 100;
-        _shownMilestones.add(100);
-      } else if (percentage >= 70.0 && !_shownMilestones.contains(70)) {
-        newMilestone = 70;
-        _shownMilestones.add(70);
-      } else if (percentage >= 30.0 && !_shownMilestones.contains(30)) {
-        newMilestone = 30;
-        _shownMilestones.add(30);
-      }
-      
-      // Trigger callback if milestone reached
-      if (newMilestone != null) {
-        debugPrint('🏆 Milestone $newMilestone% reached!');
-        
-        // Store as pending so it can be shown when user returns to app
-        _pendingMilestone = newMilestone;
-        _pendingCurrentUsage = totalUsage;
-        _pendingTotalLimit = _combinedTimeLimit;
-        
-        // Bring app to foreground to show milestone
-        await _bringAppToForeground();
-        
-        // Wait a bit for app to come to foreground
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        // Try to show immediately if callback is available
-        if (onMilestoneReached != null) {
-          debugPrint('Triggering milestone callback immediately...');
-          onMilestoneReached!(newMilestone, totalUsage, _combinedTimeLimit);
-        } else {
-          debugPrint('Callback not set, milestone will show when user returns to app');
-        }
-      }
-      
-      // Also notify Kotlin side
-      await _channel.invokeMethod('checkCombinedMilestone', {
-        'currentUsage': totalUsage,
+      // Delegate milestone checking to native Kotlin code
+      await _channel.invokeMethod('checkMilestone', {
+        'totalUsage': totalUsage,
         'totalLimit': _combinedTimeLimit,
       });
     } catch (e) {
-      debugPrint('Error checking combined milestone: $e');
+      debugPrint('Error checking milestone: $e');
     }
   }
   
-  // Check and show any pending milestone
-  void checkPendingMilestone() {
-    if (_pendingMilestone != null && 
-        _pendingCurrentUsage != null && 
-        _pendingTotalLimit != null &&
-        onMilestoneReached != null) {
-      debugPrint('📢 Showing pending milestone: $_pendingMilestone%');
-      final milestone = _pendingMilestone!;
-      final usage = _pendingCurrentUsage!;
-      final limit = _pendingTotalLimit!;
-      
-      // Clear pending values
-      _pendingMilestone = null;
-      _pendingCurrentUsage = null;
-      _pendingTotalLimit = null;
-      
-      // Trigger callback
-      onMilestoneReached!(milestone, usage, limit);
+  // Reset milestones in native Kotlin code
+  Future<void> resetShownMilestones() async {
+    try {
+      await _channel.invokeMethod('resetMilestones');
+      debugPrint('Milestones reset in native code');
+    } catch (e) {
+      debugPrint('Error resetting milestones: $e');
     }
-  }
-  
-  // Reset shown milestones (call when resetting daily usage)
-  void resetShownMilestones() {
-    _shownMilestones.clear();
-    _pendingMilestone = null;
-    _pendingCurrentUsage = null;
-    _pendingTotalLimit = null;
-    debugPrint('Milestone tracking reset');
   }
 
   Future<void> removeMonitoredApp(String packageName) async {

@@ -5,8 +5,6 @@ import 'home_page.dart';
 import 'focus_mode_page.dart';
 import 'settings_page.dart';
 import 'bottom_nav_bar.dart';
-import 'app_usage_tracker.dart';
-import 'milestone_popup.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -18,24 +16,15 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final GlobalKey<State<HomePage>> _homePageKey = GlobalKey<State<HomePage>>();
-  bool _isShowingMilestone = false; // Add flag to track milestone popup
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _setupMilestoneCallback();
-    // Check for any pending milestones when app starts
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        AppUsageTracker.instance.checkPendingMilestone();
-      }
-    });
   }
   
   @override
   void dispose() {
-    _isShowingMilestone = false; // Reset flag on dispose
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -43,48 +32,7 @@ class _MainNavigationState extends State<MainNavigation> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
-    // Check for pending milestones when app comes to foreground
-    if (state == AppLifecycleState.resumed && mounted) {
-      debugPrint('App resumed - checking for pending milestones...');
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          AppUsageTracker.instance.checkPendingMilestone();
-        }
-      });
-    }
-  }
-  
-  void _setupMilestoneCallback() {
-    // Set up milestone callback to show full-page popup
-    AppUsageTracker.instance.onMilestoneReached = (milestoneValue, currentUsage, totalLimit) {
-      if (mounted) {
-        _showMilestonePopup(milestoneValue, currentUsage, totalLimit);
-      }
-    };
-  }
-  
-  void _showMilestonePopup(int milestoneValue, int currentUsage, int totalLimit) {
-    // Prevent showing multiple popups
-    if (_isShowingMilestone) return;
-    _isShowingMilestone = true;
-
-    // Navigate to full-page milestone popup
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (context) => MilestonePopup(
-          milestoneValue: milestoneValue,
-          currentUsage: currentUsage,
-          totalLimit: totalLimit,
-          onContinue: () {
-            _isShowingMilestone = false; // Reset flag when popup is dismissed
-            // Dismiss popup and return to previous screen
-            Navigator.of(context).pop();
-          },
-        ),
-      ),
-    );
+    // Milestone tracking is now handled in native Kotlin code
   }
 
   Widget _getPage(int index) {

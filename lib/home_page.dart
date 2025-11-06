@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_usage_tracker.dart';
 import 'dart:typed_data';
-import 'milestone_page.dart';
+
 
 class PieChartPainter extends CustomPainter {
   final List<AppUsageData> appData;
@@ -394,20 +394,59 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   ),
                 ),
                 const Spacer(),
-              
+                
+                // Test Milestone Button
                 IconButton(
                   icon: const Icon(
                     Icons.emoji_events,
                     color: Color(0xFFFFD700),
                     size: 24,
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MilestonePage(),
+                  onPressed: () async {
+                    await AppUsageTracker.instance.testOverlay();
+                  },
+                ),
+                
+                // Request Permissions Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.security,
+                    color: Colors.blue,
+                    size: 24,
+                  ),
+                  onPressed: () async {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Requesting permissions...'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
+                    
+                    final result = await AppUsageTracker.instance.requestAllPermissions();
+                    
+                    if (result['allGranted'] == true) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('✅ All permissions granted!'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                      // Refresh the permission status
+                      _checkPermission();
+                    } else {
+                      String message = '⚠️ Permissions needed:\n';
+                      if (result['usageStats'] != true) message += '• Usage Stats\n';
+                      if (result['overlay'] != true) message += '• Overlay Permission';
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(message),
+                          backgroundColor: Colors.orange,
+                          duration: const Duration(seconds: 5),
+                        ),
+                      );
+                    }
                   },
                 ),
                 
