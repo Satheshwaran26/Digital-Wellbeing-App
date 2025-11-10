@@ -13,90 +13,74 @@ class ManageAppsPage extends StatefulWidget {
 }
 
 class _ManageAppsPageState extends State<ManageAppsPage> {
-  // Installed apps list
   List<Application> _apps = [];
   final Map<String, Uint8List?> _appIcons = {};
   bool _isLoading = true;
 
-  // Track selected apps
   final Set<int> _selectedApps = {};
-  
-  // Track already monitored apps
-  final Set<String> _monitoredPackages = {};
+  final Map<String, MonitoredApp> _monitoredMap = {};
+  final Set<String> _blockedPackages = {};
 
   @override
   void initState() {
     super.initState();
     _loadMonitoredApps();
     _loadInstalledApps();
+    _loadBlockedAppsNative();
   }
-  
+
+  Future<void> _loadBlockedAppsNative() async {
+    try {
+      final blocked = await AppUsageTracker.instance.getBlockedPackagesNative();
+      setState(() {
+        _blockedPackages
+          ..clear()
+          ..addAll(blocked);
+      });
+    } catch (e) {
+      debugPrint('Error loading blocked packages (native): $e');
+    }
+  }
+
   Future<void> _loadMonitoredApps() async {
     try {
       final monitoredApps = await AppUsageTracker.instance.getMonitoredApps();
       setState(() {
-        _monitoredPackages.clear();
-        _monitoredPackages.addAll(monitoredApps.map((app) => app.packageName));
+        _monitoredMap.clear();
+        for (final m in monitoredApps) {
+          _monitoredMap[m.packageName] = m;
+        }
       });
     } catch (e) {
-      print('Error loading monitored apps: $e');
+      debugPrint('Error loading monitored apps: $e');
     }
+  }
+
+  Future<void> _refreshAll() async {
+    await _loadMonitoredApps();
+    await _loadBlockedAppsNative();
+    setState(() {});
   }
 
   Future<void> _loadInstalledApps() async {
     try {
-      // Get only user-installed apps with launch intent
       List<Application> apps = await DeviceApps.getInstalledApplications(
         includeAppIcons: true,
-        includeSystemApps: false, // Exclude system apps
-        onlyAppsWithLaunchIntent: true, // Only apps that can be launched
+        includeSystemApps: false,
+        onlyAppsWithLaunchIntent: true,
       );
 
-      print('Loaded ${apps.length} apps'); // Debug output
-
-      // Additional filtering to exclude system/default apps that might slip through
       apps = apps.where((app) {
         final packageName = app.packageName.toLowerCase();
-        
-        // Filter out system packages - these are definitely system apps
         final isSystemPackage = packageName.startsWith('com.android.') ||
             packageName.startsWith('android.') ||
             packageName.startsWith('com.google.android.gms') ||
-            packageName.startsWith('com.qualcomm') ||
-            packageName.startsWith('com.samsung.android') ||
-            packageName.startsWith('com.miui.system') ||
-            packageName.startsWith('com.huawei.system') ||
-            packageName.startsWith('com.oppo.system') ||
-            packageName.startsWith('com.vivo.system') ||
-            packageName.startsWith('com.oneplus.system') ||
-            packageName == 'com.android.settings' ||
-            packageName == 'com.android.launcher' ||
-            packageName == 'com.android.launcher2' ||
-            packageName == 'com.android.launcher3' ||
-            packageName == 'com.android.calculator2' ||
-            packageName == 'com.android.deskclock' ||
-            packageName == 'com.android.calendar' ||
-            packageName == 'com.android.contacts' ||
-            packageName == 'com.android.dialer' ||
-            packageName == 'com.android.mms' ||
-            packageName == 'com.android.camera2' ||
-            packageName == 'com.android.gallery3d' ||
-            packageName == 'com.android.documentsui' ||
-            // Google Play Services and core system apps
-            packageName == 'com.google.android.gsf' ||
-            packageName == 'com.google.android.gsf.login' ||
-            packageName == 'com.google.android.partnersetup' ||
-            // Device manufacturer system apps
             packageName.contains('.system.') ||
             packageName.contains('.systemui.') ||
             packageName.contains('.launcher.');
-        
         return !isSystemPackage;
       }).toList();
 
-      print('Filtered to ${apps.length} user-installed apps'); // Debug output
-
-      // Extract icons and cache them
       final Map<String, Uint8List?> iconCache = {};
       for (var app in apps) {
         if (app is ApplicationWithIcon) {
@@ -104,41 +88,205 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
         }
       }
 
-      // Sort apps by name
       apps.sort((a, b) => a.appName.compareTo(b.appName));
-
-      print('Final apps count: ${apps.length}'); // Debug output
 
       setState(() {
         _apps = apps;
-        _appIcons.clear();
-        _appIcons.addAll(iconCache);
+        _appIcons
+          ..clear()
+          ..addAll(iconCache);
         _isLoading = false;
-        
-        // Auto-select already monitored apps
         _selectedApps.clear();
         for (int i = 0; i < _apps.length; i++) {
-          if (_monitoredPackages.contains(_apps[i].packageName)) {
+          if (_monitoredMap.containsKey(_apps[i].packageName)) {
             _selectedApps.add(i);
           }
         }
       });
     } catch (e, stackTrace) {
-      print('Error loading apps: $e'); // Debug output
-      print('Stack trace: $stackTrace'); // Debug output
+      debugPrint('Error loading apps: $e');
+      debugPrint('Stack trace: $stackTrace');
       setState(() {
         _isLoading = false;
       });
     }
   }
 
+  void _openSetTimer() async {
+    final selectedAppsList = _selectedApps.map((index) {
+      final app = _apps[index];
+      return {
+        'name': app.appName,
+        'packageName': app.packageName,
+        'iconData': _appIcons[app.packageName],
+      };
+    }).toList();
+
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SetTimerPage(
+          selectedApps: selectedAppsList,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      await _refreshAll();
+      setState(() {
+        _selectedApps.clear();
+      });
+    }
+  }
+
+// In your _unblockApp function, replace with this:
+
+  // Replace your _unblockApp function with this:
+// Replace your _unblockApp function with this:
+
+  Future<void> _unblockApp(String packageName) async {
+    final appName = _monitoredMap[packageName]?.appName ?? packageName;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Unblock $appName?',
+          style: GoogleFonts.montserrat(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'This will remove $appName from monitoring completely. You can add it again later.',
+          style: GoogleFonts.montserrat(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.montserrat(color: Colors.white54),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF007BFF),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(
+              'Unblock',
+              style: GoogleFonts.montserrat(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF007BFF)),
+      ),
+    );
+
+    try {
+      debugPrint('🔓 UI: Starting unblock (removal) for $packageName');
+
+      // Call unblock (which removes the app)
+      await AppUsageTracker.instance.unblockApp(packageName);
+
+      // Wait to ensure everything is processed
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      // Refresh UI
+      await _loadMonitoredApps();
+      await _loadBlockedAppsNative();
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Clear selection if app was selected
+      setState(() {
+        final appIndex = _apps.indexWhere((app) => app.packageName == packageName);
+        if (appIndex != -1) {
+          _selectedApps.remove(appIndex);
+        }
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '$appName removed from monitoring',
+                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF4CAF50),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        debugPrint('✅ UI: Unblock (removal) complete for $packageName');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ UI: Unblock error: $e');
+      debugPrint('Stack: $stackTrace');
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Show error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Failed to unblock: $e',
+                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final selectedCount = _selectedApps.length;
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       body: Column(
         children: [
-          // Top App Bar
           Container(
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + 12,
@@ -159,8 +307,6 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
                   },
                 ),
                 const SizedBox(width: 12),
-               
-                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Manage Apps',
@@ -172,9 +318,9 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
                     ),
                   ),
                 ),
-                if (_selectedApps.isNotEmpty)
+                if (selectedCount > 0)
                   Text(
-                    '${_selectedApps.length} selected',
+                    '$selectedCount selected',
                     style: GoogleFonts.montserrat(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -184,42 +330,47 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
               ],
             ),
           ),
-          // Main Content
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF007BFF),
-                    ),
-                  )
+              child: CircularProgressIndicator(
+                color: Color(0xFF007BFF),
+              ),
+            )
                 : _apps.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No apps found',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 16,
-                            color: Colors.white.withOpacity(0.6),
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        itemCount: _apps.length,
-                        itemBuilder: (context, index) {
-                          final app = _apps[index];
-                          final isMonitored = _monitoredPackages.contains(app.packageName);
-                          return _buildAppItem(
-                            index,
-                            app.appName,
-                            app.packageName,
-                            _appIcons[app.packageName],
-                            isMonitored,
-                          );
-                        },
-                      ),
+                ? Center(
+              child: Text(
+                'No apps found',
+                style: GoogleFonts.montserrat(
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+            )
+                : RefreshIndicator(
+              onRefresh: _refreshAll,
+              color: const Color(0xFF007BFF),
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                itemCount: _apps.length,
+                itemBuilder: (context, index) {
+                  final app = _apps[index];
+                  final monitored = _monitoredMap[app.packageName];
+                  final isBlocked = monitored?.isBlocked == true || _blockedPackages.contains(app.packageName);
+                  return _buildAppItem(
+                    index: index,
+                    appName: app.appName,
+                    packageName: app.packageName,
+                    iconData: _appIcons[app.packageName],
+                    monitoredApp: monitored,
+                    isBlocked: isBlocked,
+                  );
+                },
+              ),
+            ),
           ),
-          // Set Timer Button (shown when apps are selected)
-          if (_selectedApps.isNotEmpty)
+          if (selectedCount > 0)
             Container(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               decoration: BoxDecoration(
@@ -228,7 +379,6 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
                   BoxShadow(
                     color: Colors.black.withOpacity(0.5),
                     blurRadius: 20,
-                    spreadRadius: 0,
                     offset: const Offset(0, -5),
                   ),
                 ],
@@ -237,38 +387,11 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
                 child: SizedBox(
                   width: double.infinity,
                   height: 56,
-                    child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final selectedAppsList = _selectedApps.map((index) {
-                        final app = _apps[index];
-                        return {
-                          'name': app.appName,
-                          'packageName': app.packageName,
-                          'iconData': _appIcons[app.packageName], // Pass icon data
-                        };
-                      }).toList();
-                      
-                      final result = await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => SetTimerPage(
-                            selectedApps: selectedAppsList,
-                          ),
-                        ),
-                      );
-                      
-                      // If monitoring was started successfully, clear selection
-                      if (result == true) {
-                        setState(() {
-                          _selectedApps.clear();
-                        });
-                      }
-                    },
-                    icon: const Icon(
-                      Icons.timer,
-                      color: Colors.white,
-                    ),
+                  child: ElevatedButton.icon(
+                    onPressed: _openSetTimer,
+                    icon: const Icon(Icons.timer, color: Colors.white),
                     label: Text(
-                      'Start Monitoring ${_selectedApps.length} App${_selectedApps.length > 1 ? 's' : ''}',
+                      'Set Time Limit for $selectedCount App${selectedCount > 1 ? 's' : ''}',
                       style: GoogleFonts.montserrat(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -277,7 +400,6 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF007BFF),
-                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -292,19 +414,26 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
     );
   }
 
-  Widget _buildAppItem(
-    int index,
-    String appName,
-    String packageName,
-    Uint8List? iconData,
-    bool isMonitored,
-  ) {
+  Widget _buildAppItem({
+    required int index,
+    required String appName,
+    required String packageName,
+    required Uint8List? iconData,
+    required MonitoredApp? monitoredApp,
+    required bool isBlocked,
+  }) {
     final isSelected = _selectedApps.contains(index);
+    final timeLimit = monitoredApp?.timeLimitSeconds;
+    final usage = monitoredApp?.totalUsageSeconds ?? 0;
+    final limitStr = timeLimit != null
+        ? _formatDuration(timeLimit)
+        : '-';
+    final usageStr = _formatDuration(usage);
 
     return InkWell(
       onTap: () {
         setState(() {
-          if (_selectedApps.contains(index)) {
+          if (isSelected) {
             _selectedApps.remove(index);
           } else {
             _selectedApps.add(index);
@@ -313,65 +442,42 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
+        margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF007BFF).withOpacity(0.1)
+              ? const Color(0xFF007BFF).withOpacity(0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isBlocked
+                ? Colors.redAccent.withOpacity(0.7)
+                : Colors.white.withOpacity(0.15),
+            width: 1,
+          ),
         ),
         child: Row(
           children: [
-            // App Icon
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF007BFF).withOpacity(0.3),
-                          blurRadius: 8,
-                          spreadRadius: 0,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: iconData != null
-                    ? Image.memory(
-                        iconData,
-                        width: 52,
-                        height: 52,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 52,
-                            height: 52,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(Icons.apps, color: Colors.white, size: 28),
-                          );
-                        },
-                      )
-                    : Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(Icons.apps, color: Colors.white, size: 28),
-                      ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: iconData != null
+                  ? Image.memory(
+                iconData,
+                width: 52,
+                height: 52,
+                fit: BoxFit.cover,
+              )
+                  : Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.apps, color: Colors.white, size: 28),
               ),
             ),
             const SizedBox(width: 16),
-            // App Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,22 +490,38 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
                       color: Colors.white,
                     ),
                   ),
-                  if (isMonitored) ...[
-                    const SizedBox(height: 4),
+                  const SizedBox(height: 4),
+                  if (monitoredApp != null)
                     Row(
                       children: [
                         Icon(
-                          Icons.check_circle,
+                          Icons.watch_later_outlined,
                           size: 14,
-                          color: const Color(0xFF4CAF50),
+                          color: Colors.white.withOpacity(0.7),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Monitoring',
+                          '$usageStr / $limitStr',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (isBlocked) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.block, size: 14, color: Colors.redAccent),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Blocked',
                           style: GoogleFonts.montserrat(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF4CAF50),
+                            color: Colors.redAccent,
                           ),
                         ),
                       ],
@@ -408,33 +530,66 @@ class _ManageAppsPageState extends State<ManageAppsPage> {
                 ],
               ),
             ),
-            // Checkbox
-            Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
+            if (isBlocked)
+              TextButton(
+                onPressed: () => _unblockApp(packageName),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  backgroundColor: Colors.redAccent.withOpacity(0.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'UNBLOCK',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF007BFF)
+                        : Colors.white.withOpacity(0.3),
+                    width: 2,
+                  ),
                   color: isSelected
                       ? const Color(0xFF007BFF)
-                      : Colors.white.withOpacity(0.3),
-                  width: 2,
+                      : Colors.transparent,
                 ),
-                color: isSelected
-                    ? const Color(0xFF007BFF)
-                    : Colors.transparent,
+                child: isSelected
+                    ? const Icon(
+                  Icons.check,
+                  size: 14,
+                  color: Colors.white,
+                )
+                    : null,
               ),
-              child: isSelected
-                  ? const Icon(
-                      Icons.check,
-                      size: 14,
-                      color: Colors.white,
-                    )
-                  : null,
-            ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatDuration(int totalSeconds) {
+    final h = totalSeconds ~/ 3600;
+    final m = (totalSeconds % 3600) ~/ 60;
+    final s = totalSeconds % 60;
+    if (h > 0) {
+      return '${h}h ${m}m';
+    } else if (m > 0) {
+      return '${m}m';
+    } else {
+      return '${s}s';
+    }
   }
 }
