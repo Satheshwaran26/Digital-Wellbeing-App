@@ -29,66 +29,57 @@ class AppMonitorService : Service() {
         private const val KEY_LIMITS = "app_limits"
         private const val KEY_SHOWN_WELCOME = "shown_welcome"
 
-        // Thoughtful messages for different usage levels
-        private val WELCOME_MESSAGES = listOf(
-            "Time to focus! Your usage is being tracked.",
-            "Starting fresh! Make every minute count.",
-            "Your digital wellbeing journey begins now.",
-            "Mindful usage starts here!",
-            "Let's build healthy screen habits together."
-        )
+        // 🧘 Digital Wellbeing Daily Routine Generator
+        private fun getDailyEyeExercise(): String {
+            val eyeExercises = arrayOf(
+                "🔄 Slow Blinks\nBlink slowly 20 times, holding each blink for 2 seconds to relax your eyes.",
+                "👁 20-20-20 Rule\nLook at an object 20 feet away for 20 seconds to rest your eye muscles.",
+                "🎯 Focus Shift\nFocus on your finger 6 inches away, then something far. Repeat 10 times.",
+                "🔵 Figure 8\nTrace an imaginary figure 8 with your eyes 5 times, 10 feet away.",
+                "⬆ Eye Movements\nLook up, down, left, right for 3 seconds each without moving your head.",
+                "🌀 Eye Rolls\nRoll your eyes in circles 5 times clockwise, then counterclockwise.",
+                "👆 Near & Far\nFocus on your thumb at arm's length, then something far for 5 seconds each.",
+                "✋ Palming\nCup your palms over closed eyes for 30 seconds, breathing deeply.",
+                "💧 Rapid Blinks\nBlink rapidly 10 times to stimulate tear production.",
+                "😴 Rest & Breathe\nClose your eyes, take 5 deep breaths, and relax for 30 seconds."
+            )
+            val dayOfYear = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+            return eyeExercises[dayOfYear % eyeExercises.size]
+        }
 
-        private val MILESTONE_30_MESSAGES = listOf(
-            "You've used 30% of your limit. Stay mindful!",
-            "Great start! You have 70% left.",
-            "30% used. Keep up the balanced usage!",
-            "On track! Most of your time is still available.",
-            "Nice control! 70% remaining for today.",
-            "You're doing well! 30% milestone reached.",
-            "Stay focused! You still have plenty of time left.",
-            "Good progress! Remember to take breaks.",
-            "30% done! Use your remaining time wisely.",
-            "Keep going! You're managing your time well."
-        )
+        private fun getDailyPhysicalActivity(): String {
+            val physicalActivities = arrayOf(
+                "🚶 Quick Walk\nTake a 5-10 minute walk to refresh your mind and body.",
+                "🧘 Stretch Break\nDo 5 minutes of neck, shoulder, and back stretches.",
+                "🏃 Cardio Burst\nDo 2 minutes of jumping jacks or high knees.",
+                "🎯 Active Game\nPlay catch or juggle for 5 minutes to stay active.",
+                "💪 Bodyweight Workout\nDo 10 push-ups, 15 squats, or a 30-second plank.",
+                "🌿 Nature Moment\nStep outside and observe nature for 5 minutes.",
+                "🎵 Dance Party\nDance to a favorite song for 3-5 minutes.",
+                "🧘‍♀ Meditation\nPractice 5 minutes of deep breathing or meditation.",
+                "🏠 Quick Chore\nOrganize your desk or water plants for 5 minutes.",
+                "📞 Social Break\nCall a friend for a quick, uplifting chat."
+            )
+            val dayOfYear = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+            return physicalActivities[(dayOfYear + 5) % physicalActivities.size]
+        }
 
-        private val MILESTONE_70_MESSAGES = listOf(
-            "70% of your limit used. Time to slow down!",
-            "Alert! Only 30% of your time remains.",
-            "You're at 70%! Consider taking a break soon.",
-            "Running low! 30% left for today.",
-            "Careful! You've used most of your time.",
-            "70% milestone! Make your last 30% count.",
-            "Time check! You're running out quickly.",
-            "Heads up! Better wrap things up soon.",
-            "70% used! Plan your remaining time wisely.",
-            "Almost there! Use your last 30% mindfully."
-        )
-
-        private val MILESTONE_100_MESSAGES = listOf(
-            "Time's up! Take a break and recharge.",
-            "Limit reached! It's time to disconnect.",
-            "100%! Your brain deserves a rest now.",
-            "Well done! Now take a healthy break.",
-            "Time limit reached. Go do something offline!",
-            "You've reached your limit. Time to unplug!",
-            "Screen time over! Try something different now.",
-            "Limit hit! Your eyes will thank you for a break.",
-            "That's enough screen time! Go refresh yourself.",
-            "100% done! Step away and enjoy the real world."
-        )
-
-        private val BLOCKED_MESSAGES = listOf(
-            "App blocked! Time to focus on other things.",
-            "Blocked! Your wellbeing comes first.",
-            "Time limit exceeded! Take a breather.",
-            "App locked! Let's do something productive.",
-            "Blocked for your health! Try a walk instead.",
-            "Limit reached! Your future self will thank you.",
-            "App blocked! Disconnect to reconnect with life.",
-            "Time's up! Go enjoy the world around you.",
-            "Blocked! Balance is the key to happiness.",
-            "Locked! Use this time for self-improvement."
-        )
+        private fun getDailyMotivation(): String {
+            val motivationalBreaks = arrayOf(
+                "🌱 Reflect\n\"Take 5 minutes to think about your goals and dreams.\"",
+                "🧠 Mindful Break\n\"Give your brain a rest with 5 minutes of quiet breathing.\"",
+                "💭 Creative Spark\n\"Let your mind wander freely for new ideas.\"",
+                "🌍 Real World\n\"Step outside and experience the world beyond screens.\"",
+                "💪 Willpower Win\n\"You're mastering technology with every break you take!\"",
+                "🎯 Focus Boost\n\"Screen breaks enhance your focus across all tasks.\"",
+                "⚖ Balance\n\"You're creating a healthier tech-life balance.\"",
+                "🌟 Be Present\n\"Embrace the moment without digital distractions.\"",
+                "🧘 Inner Peace\n\"Connect with yourself in a quiet moment.\"",
+                "🚀 Productivity\n\"Breaks boost productivity by 23%. Keep it up!\""
+            )
+            val dayOfYear = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+            return motivationalBreaks[(dayOfYear + 10) % motivationalBreaks.size]
+        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -286,8 +277,15 @@ class AppMonitorService : Service() {
         }
     }
 
-    private fun getRandomMessage(messages: List<String>): String {
-        return messages[Random.nextInt(messages.size)]
+    private fun getRandomMessage(messageType: String): String {
+        return when (messageType) {
+            "welcome" -> getDailyMotivation()
+            "30" -> getDailyEyeExercise()
+            "70" -> getDailyPhysicalActivity()
+            "100" -> getDailyMotivation()
+            "blocked" -> getDailyPhysicalActivity()
+            else -> getDailyMotivation()
+        }
     }
 
     private fun showMonitoringStartNotification(packageName: String) {
@@ -295,12 +293,12 @@ class AppMonitorService : Service() {
         val limit = appLimits[packageName] ?: 0
         val limitText = formatSeconds(limit)
 
-        val message = getRandomMessage(WELCOME_MESSAGES)
+        val message = getRandomMessage("welcome")
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("🔍 $appName - Monitoring Started")
-            .setContentText(message)
+            .setContentText(message.split("\n")[0])
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText("$message\n\nTime limit: $limitText"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -320,9 +318,9 @@ class AppMonitorService : Service() {
         val limitText = formatSeconds(limit)
 
         val message = when (milestone) {
-            30 -> getRandomMessage(MILESTONE_30_MESSAGES)
-            70 -> getRandomMessage(MILESTONE_70_MESSAGES)
-            100 -> getRandomMessage(MILESTONE_100_MESSAGES)
+            30 -> getRandomMessage("30")
+            70 -> getRandomMessage("70")
+            100 -> getRandomMessage("100")
             else -> "Milestone $milestone% reached"
         }
 
@@ -336,7 +334,7 @@ class AppMonitorService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("$emoji $appName - $milestone% Used")
-            .setContentText(message)
+            .setContentText(message.split("\n")[0])
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText("$message\n\nUsage: $usageText / $limitText"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -363,12 +361,12 @@ class AppMonitorService : Service() {
         val usageText = formatSeconds(usage)
         val limitText = formatSeconds(limit)
 
-        val message = getRandomMessage(BLOCKED_MESSAGES)
+        val message = getRandomMessage("blocked")
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_delete)
             .setContentTitle("🚫 $appName - Blocked")
-            .setContentText(message)
+            .setContentText(message.split("\n")[0])
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText("$message\n\nUsage: $usageText / $limitText"))
             .setPriority(NotificationCompat.PRIORITY_MAX)
