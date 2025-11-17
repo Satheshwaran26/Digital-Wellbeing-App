@@ -1,37 +1,30 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Permission required for Android 11+ to query installed apps -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
-    <!-- Permission for app usage stats (optional - will request at runtime) -->
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+    <!-- Permissions -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
-    <!-- Permission for notifications (Android 13+) -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Permission to draw over other apps (for milestone overlay) -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- Permission to manage system windows and overlays -->
-    <uses-permission android:name="android.permission.INTERNAL_SYSTEM_WINDOW" tools:ignore="ProtectedPermissions" />
-    <!-- Permission for window management -->
-    <uses-permission android:name="android.permission.MANAGE_OVERLAY_PERMISSION" tools:ignore="ProtectedPermissions" />
-    <!-- Foreground service permission for Android 9+ -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
         tools:ignore="ForegroundServicesPolicy" />
-    <!-- Special foreground service permission for Android 14+ -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions"/>
-
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
-        tools:ignore="ForegroundServicesPolicy" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"
+        tools:ignore="ExactAlarmPolicy" />
+    <uses-permission android:name="android.permission.GET_TASKS" />
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
 
 
@@ -69,15 +62,23 @@
             android:name="com.example.my_app.AppMonitorService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
-            android:enabled="true"/>
+            android:enabled="true"
+            tools:ignore="ForegroundServicePermission" />
+
+
+        <service
+            android:name=".OverlayBlockingService"
+            android:enabled="true"
+            android:exported="false"/>
 
         <activity
             android:name="com.example.my_app.BlockingActivity"
             android:excludeFromRecents="true"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
-            android:launchMode="singleTask"
-            android:exported="false" />
-
+            android:launchMode="singleTop"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize" />
         <service
             android:name="com.example.my_app.AppUsageAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -97,6 +98,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <meta-data
+            android:name="com.google.android.play.PROVIDES_USER_TRANSPARENCY"
+            android:value="true" />
+
+
+        <meta-data
+            android:name="com.google.android.play.PRIVACY_POLICY"
+            android:value="https://github.com/Satheshwaran26/Digital-Wellbeing-App.git" />
         
         <!-- Background service for app monitoring and milestone overlays -->
     </application>

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:my_app/weekly_storage_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_usage_tracker.dart';
 import 'dart:typed_data';
@@ -12,65 +13,91 @@ class PieChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (appData.isEmpty) return;
+    if (appData.isEmpty) {
+      // Draw empty circle
+      final emptyPaint = Paint()
+        ..color = Colors.white.withOpacity(0.05)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 20;
+
+      canvas.drawCircle(
+        Offset(size.width / 2, size.height / 2),
+        size.width / 2 - 40,
+        emptyPaint,
+      );
+      return;
+    }
 
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 3;
-    final cornerRadius = 10.0;
+    final radius = size.width / 2 - 40;
+    final strokeWidth = 20.0; // Thin stroke like reference
 
-    final gapAngle = appData.length > 1 ? (2.5 * math.pi / 180.0) : 0.0;
+    // Draw subtle background circle
+    final bgPaint = Paint()
+      ..color = Colors.white.withOpacity(0.03)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Calculate total
+    final totalSeconds = appData.fold<double>(0.0, (sum, data) => sum + data.usageSeconds.toDouble());
+
+    // Gap between segments (in radians)
+    final gapAngle = 0.05; // Small gap like reference image
     final totalGapAngle = gapAngle * appData.length;
-    final availableAngle = (2 * math.pi) - totalGapAngle;
+    final usableAngle = (2 * math.pi) - totalGapAngle;
 
-    double startAngle = -math.pi / 2;
+    double startAngle = -math.pi / 2; // Start from top
 
     for (int i = 0; i < appData.length; i++) {
       final data = appData[i];
-      final sweepAngle = (data.percentage / 100) * availableAngle;
+      final sweepAngle = (data.usageSeconds / totalSeconds) * usableAngle;
 
       if (sweepAngle <= 0) continue;
 
-      final path = Path();
-      final startRadians = startAngle;
-      final endRadians = startAngle + sweepAngle;
-
-      final startOuterX = center.dx + radius * math.cos(startRadians);
-      final startOuterY = center.dy + radius * math.sin(startRadians);
-      final endOuterX = center.dx + radius * math.cos(endRadians);
-      final endOuterY = center.dy + radius * math.sin(endRadians);
-
-      path.moveTo(center.dx, center.dy);
-
-      final startInnerX = center.dx + (radius - cornerRadius) * math.cos(startRadians);
-      final startInnerY = center.dy + (radius - cornerRadius) * math.sin(startRadians);
-      path.lineTo(startInnerX, startInnerY);
-
-      path.quadraticBezierTo(
-        startOuterX,
-        startOuterY,
-        center.dx + (radius - cornerRadius * 0.5) * math.cos(startRadians + sweepAngle * 0.05),
-        center.dy + (radius - cornerRadius * 0.5) * math.sin(startRadians + sweepAngle * 0.05),
-      );
-
-      final rect = Rect.fromCircle(center: center, radius: radius);
-      path.arcTo(rect, startRadians, sweepAngle, false);
-
-      final endInnerX = center.dx + (radius - cornerRadius) * math.cos(endRadians);
-      final endInnerY = center.dy + (radius - cornerRadius) * math.sin(endRadians);
-      path.quadraticBezierTo(endOuterX, endOuterY, endInnerX, endInnerY);
-
-      final innerRect = Rect.fromCircle(center: center, radius: radius - cornerRadius);
-      path.arcTo(innerRect, endRadians, -sweepAngle, false);
-
-      path.close();
-
+      // Draw arc with rounded caps
       final paint = Paint()
         ..color = data.color
-        ..style = PaintingStyle.fill;
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
 
-      canvas.drawPath(path, paint);
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawArc(rect, startAngle, sweepAngle, false, paint);
 
-      startAngle += sweepAngle + gapAngle;
+      // Draw usage label outside the arc (like reference image)
+      final midAngle = startAngle + (sweepAngle / 2);
+      final labelRadius = radius + 35; // Position outside the ring
+      final labelX = center.dx + labelRadius * math.cos(midAngle);
+      final labelY = center.dy + labelRadius * math.sin(midAngle);
+
+      // Format time for label
+      final hours = data.usageSeconds / 3600;
+      final minutes = (data.usageSeconds % 3600) / 60;
+      final labelText = hours >= 1
+          ? '${hours.toStringAsFixed(1)}h'
+          : '${minutes.toInt()}m';
+
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: labelText,
+          style: TextStyle(
+            color: data.color,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(labelX - textPainter.width / 2, labelY - textPainter.height / 2),
+      );
+
+      startAngle += sweepAngle + gapAngle; // Add gap after each segment
     }
   }
 
@@ -103,19 +130,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _hasPermission = false;
   bool _checkingPermission = false;
-  String _filterMode = 'all'; // 'all', 'monitoring', 'completed'
 
   final List<Color> _colors = [
-    const Color(0xFF007BFF),
-    const Color(0xFFCC3333),
-    const Color(0xFFAD1457),
-    const Color(0xFF1565C0),
-    const Color(0xFF00695C),
-    const Color(0xFF2E7D32),
-    const Color(0xFFF57C00),
-    const Color(0xFF7B1FA2),
-    const Color(0xFFC62828),
-    const Color(0xFF0277BD),
+    const Color(0xFF9C27B0), // Purple
+    const Color(0xFF00BCD4), // Cyan
+    const Color(0xFFFF5252), // Red
+    const Color(0xFFFF9800), // Orange
+    const Color(0xFF2196F3), // Blue
+    const Color(0xFF4CAF50), // Green
+    const Color(0xFFFFEB3B), // Yellow
+    const Color(0xFFE91E63), // Pink
   ];
 
   @override
@@ -127,6 +151,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _startPeriodicRefresh();
     AppUsageTracker.instance.requestNotificationPermission();
     AppUsageTracker.instance.requestIgnoreBatteryOptimizations();
+
+    _requestPermissions();
+
   }
 
   @override
@@ -146,29 +173,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+
+  Future<void> _requestPermissions() async {
+    // Request overlay permission for better blocking
+    await AppUsageTracker.instance.requestOverlayPermission();
+  }
+
+
+  Future<void> _saveToWeeklyStorage() async {
+    try {
+      Map<String, int> dailyUsage = {};
+      for (var app in _monitoredApps) {
+        if (app.totalUsageSeconds > 0) {
+          dailyUsage[app.packageName] = app.totalUsageSeconds;
+        }
+      }
+
+      if (dailyUsage.isNotEmpty) {
+        await WeeklyStorageService.saveDailyUsage(dailyUsage);
+      }
+    } catch (e) {
+      debugPrint('Error saving to weekly storage: $e');
+    }
+  }
+
+// Update _startPeriodicRefresh method
   void _startPeriodicRefresh() {
-    Future.delayed(const Duration(seconds: 2), () async {
+    Future.delayed(const Duration(seconds: 3), () async {
       if (!mounted) return;
-      await AppUsageTracker.instance.pullUsageSnapshotAndMerge();
-      await _loadMonitoredApps(noInit: true);
+      await _loadMonitoredApps();
+      await _saveToWeeklyStorage(); // Add this line
       _startPeriodicRefresh();
     });
   }
 
-  Future<void> _loadMonitoredApps({bool noInit = false}) async {
+
+
+  Future<void> _loadMonitoredApps() async {
     try {
-      if (!noInit) {
-        await AppUsageTracker.instance.initialize();
-      }
+      await AppUsageTracker.instance.initialize();
+      await AppUsageTracker.instance.pullUsageSnapshotAndMerge();
       final apps = await AppUsageTracker.instance.getMonitoredApps();
 
-      // Sort by usage time (descending)
-      apps.sort((a, b) {
-        if (a.totalUsageSeconds != b.totalUsageSeconds) {
-          return b.totalUsageSeconds.compareTo(a.totalUsageSeconds);
-        }
-        return a.appName.compareTo(b.appName);
-      });
+      // Sort by usage time
+      apps.sort((a, b) => b.totalUsageSeconds.compareTo(a.totalUsageSeconds));
 
       if (mounted) {
         setState(() {
@@ -190,43 +238,28 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  List<MonitoredApp> _getFilteredApps() {
-    switch (_filterMode) {
-      case 'monitoring':
-        return _monitoredApps.where((app) =>
-        app.totalUsageSeconds > 0 &&
-            app.totalUsageSeconds < app.timeLimitSeconds
-        ).toList();
-      case 'completed':
-        return _monitoredApps.where((app) =>
-        app.totalUsageSeconds >= app.timeLimitSeconds &&
-            app.timeLimitSeconds > 0
-        ).toList();
-      case 'all':
-      default:
-        return _monitoredApps;
-    }
-  }
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
-    final filteredApps = _getFilteredApps();
-
-    // Calculate total usage from filtered apps ONLY
-    final totalSeconds = filteredApps.fold<int>(0, (sum, app) => sum + app.totalUsageSeconds);
+    // Calculate total for MONITORED APPS ONLY
+    final totalSeconds = _monitoredApps.fold<int>(0, (sum, app) => sum + app.totalUsageSeconds);
     final totalHours = totalSeconds ~/ 3600;
     final totalMinutes = (totalSeconds % 3600) ~/ 60;
-    final totalSeconds_remaining = totalSeconds % 60;
 
     final totalUsage = totalHours > 0
         ? '${totalHours}h ${totalMinutes}m'
         : totalMinutes > 0
-        ? '${totalMinutes}m ${totalSeconds_remaining}s'
-        : '${totalSeconds_remaining}s';
+        ? '${totalMinutes}m'
+        : '${totalSeconds}s';
 
-    // Create pie chart data from FILTERED apps with actual usage
-    final appUsageData = filteredApps.where((app) => app.totalUsageSeconds > 0).map((app) {
-      final index = _monitoredApps.indexOf(app);
+    // Chart data - MONITORED APPS with usage > 0
+    final appsWithUsage = _monitoredApps.where((app) => app.totalUsageSeconds > 0).toList();
+    final appUsageData = appsWithUsage.take(8).map((app) {
+      final index = appsWithUsage.indexOf(app);
       final percentage = totalSeconds > 0
           ? (app.totalUsageSeconds / totalSeconds) * 100.0
           : 0.0;
@@ -238,9 +271,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         usageSeconds: app.totalUsageSeconds,
       );
     }).toList();
-
-    // Sort by usage for better visualization
-    appUsageData.sort((a, b) => b.usageSeconds.compareTo(a.usageSeconds));
 
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
@@ -299,7 +329,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           ]),
                           const SizedBox(height: 12),
                           Text(
-                            'Usage access is required for automatic tracking. You can also enable the Accessibility service for best accuracy.',
+                            'Usage access is required for tracking apps.',
                             style: GoogleFonts.montserrat(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white.withOpacity(0.9)),
                           ),
                           const SizedBox(height: 16),
@@ -326,47 +356,48 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ),
                     ),
 
-                  // Pie Chart
+                  // Clean Donut Chart - Like Reference Image
                   Column(
                     children: [
-                      SizedBox(
-                        width: 256,
-                        height: 256,
+                      Container(
+                        width: 300,
+                        height: 300,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.01),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            if (appUsageData.isNotEmpty)
-                              CustomPaint(
-                                size: const Size(256, 256),
-                                painter: PieChartPainter(appData: appUsageData),
-                              )
-                            else
-                              Container(
-                                width: 256,
-                                height: 256,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white.withOpacity(0.1), width: 3),
-                                ),
-                              ),
+                            CustomPaint(
+                              size: const Size(300, 300),
+                              painter: PieChartPainter(appData: appUsageData),
+                            ),
                             Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   totalUsage,
                                   style: GoogleFonts.montserrat(
-                                    fontSize: 40,
+                                    fontSize: 42,
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white,
+                                    letterSpacing: -1,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 4),
                                 Text(
-                                  'Total Usage Today',
+                                  'Total Today',
                                   style: GoogleFonts.montserrat(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                     color: const Color(0xFF9E9E9E),
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ],
@@ -374,73 +405,92 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Your App Usage Summary',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                      const SizedBox(height: 32),
+
+                      // Compact Legend
+                      if (appUsageData.isNotEmpty)
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: appUsageData.take(4).map((data) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: data.color.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: data.color.withOpacity(0.3), width: 1),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: data.color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    data.appName.length > 10
+                                        ? '${data.appName.substring(0, 10)}...'
+                                        : data.appName,
+                                    style: GoogleFonts.montserrat(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white.withOpacity(0.85),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'No monitored apps with usage yet',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                          ),
                         ),
-                      ),
                     ],
                   ),
 
                   const SizedBox(height: 32),
 
-                  // Filter Chips
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: _buildFilterChip(
-                          'All Apps',
-                          'all',
-                          _monitoredApps.length,
+                      Text(
+                        'Monitored Apps',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildFilterChip(
-                          'Active',
-                          'monitoring',
-                          _monitoredApps.where((app) =>
-                          app.totalUsageSeconds > 0 &&
-                              app.totalUsageSeconds < app.timeLimitSeconds
-                          ).length,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildFilterChip(
-                          'Limit Reached',
-                          'completed',
-                          _monitoredApps.where((app) =>
-                          app.totalUsageSeconds >= app.timeLimitSeconds &&
-                              app.timeLimitSeconds > 0
-                          ).length,
+                      Text(
+                        '${_monitoredApps.length} apps',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.6),
                         ),
                       ),
                     ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'App List',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 16),
 
                   _isLoading
                       ? const Center(child: CircularProgressIndicator(color: Color(0xFF007BFF)))
-                      : filteredApps.isEmpty
+                      : _monitoredApps.isEmpty
                       ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),
@@ -449,9 +499,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           Icon(Icons.apps_outlined, size: 64, color: Colors.white.withOpacity(0.3)),
                           const SizedBox(height: 16),
                           Text(
-                            _filterMode == 'all'
-                                ? 'No apps being monitored'
-                                : 'No apps in this category',
+                            'No apps being monitored',
                             style: GoogleFonts.montserrat(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -460,7 +508,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Select apps to monitor from the Manage Apps page',
+                            'Select apps from Manage Apps page',
                             style: GoogleFonts.montserrat(
                               fontSize: 14,
                               fontWeight: FontWeight.w400,
@@ -473,13 +521,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     ),
                   )
                       : Column(
-                    children: filteredApps.map((app) {
+                    children: _monitoredApps.map((app) {
                       final usage = app.formattedUsage;
                       final limit = _formatSeconds(app.timeLimitSeconds);
                       final percentage = app.timeLimitSeconds > 0
-                          ? (app.totalUsageSeconds / app.timeLimitSeconds * 100).clamp(0, 100).toInt()
+                          ? ((app.totalUsageSeconds / app.timeLimitSeconds) * 100).clamp(0, 100).toInt()
                           : 0;
-                      final isLimitReached = app.totalUsageSeconds >= app.timeLimitSeconds && app.timeLimitSeconds > 0;
+                      final isLimitReached = percentage >= 100;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -490,8 +538,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           border: Border.all(
                             color: isLimitReached
                                 ? const Color(0xFFFF5252).withOpacity(0.5)
-                                : Colors.white.withOpacity(0.1),
-                            width: 1,
+                                : const Color(0xFF007BFF).withOpacity(0.3),
+                            width: 2,
                           ),
                         ),
                         child: Column(
@@ -529,6 +577,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                           fontWeight: FontWeight.w700,
                                           color: Colors.white,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
@@ -595,60 +645,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildFilterChip(String label, String mode, int count) {
-    final isSelected = _filterMode == mode;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _filterMode = mode;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF007BFF) : const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF007BFF) : Colors.white.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              '$count',
-              style: GoogleFonts.montserrat(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.montserrat(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withOpacity(0.8),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   String _formatSeconds(int seconds) {
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
-    final s = seconds % 60;
     if (h > 0) {
       return '${h}h ${m}m';
     } else if (m > 0) {
       return '${m}m';
     } else {
-      return '${s}s';
+      return '${seconds}s';
     }
   }
 }

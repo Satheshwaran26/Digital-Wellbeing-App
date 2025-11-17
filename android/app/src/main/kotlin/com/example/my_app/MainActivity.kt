@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import androidx.core.net.toUri
 
 class MainActivity : FlutterActivity() {
 
@@ -75,6 +76,19 @@ class MainActivity : FlutterActivity() {
                 "openAccessibilitySettings" -> {
                     openAccessibilitySettings()
                     result.success(true)
+                }
+
+                "requestOverlayPermission" -> {
+                    if (!Settings.canDrawOverlays(this)) {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            "package:$packageName".toUri()
+                        )
+                        startActivityForResult(intent, 12345)
+                        result.success(false)
+                    } else {
+                        result.success(true)
+                    }
                 }
                 else -> result.notImplemented()
             }

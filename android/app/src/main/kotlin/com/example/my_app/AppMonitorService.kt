@@ -13,7 +13,8 @@ import android.content.pm.ServiceInfo
 import org.json.JSONObject
 import org.json.JSONArray
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.random.Random
+import android.provider.Settings
+
 
 class AppMonitorService : Service() {
 
@@ -24,85 +25,72 @@ class AppMonitorService : Service() {
         const val EXTRA_PACKAGE = "package_name"
 
         private const val PREFS_NAME = "app_monitor_data"
-        private const val KEY_USAGE = "usage_data"
+        private const val KEY_APP_TIMERS = "app_timers" // Store: startTime + limit
         private const val KEY_BLOCKED = "blocked_apps"
-        private const val KEY_LIMITS = "app_limits"
+        private const val KEY_MILESTONES = "milestone_flags"
         private const val KEY_SHOWN_WELCOME = "shown_welcome"
 
-        // Thoughtful messages for different usage levels
-        private val WELCOME_MESSAGES = listOf(
-            "Time to focus! Your usage is being tracked.",
-            "Starting fresh! Make every minute count.",
-            "Your digital wellbeing journey begins now.",
-            "Mindful usage starts here!",
-            "Let's build healthy screen habits together."
-        )
+        // Daily wellbeing routines
+        private fun getDailyEyeExercise(): String {
+            val exercises = arrayOf(
+                "🔄 Slow Blinks\nBlink slowly 20 times, holding each blink for 2 seconds to relax your eyes.",
+                "👁 20-20-20 Rule\nLook at an object 20 feet away for 20 seconds to rest your eye muscles.",
+                "🎯 Focus Shift\nFocus on your finger 6 inches away, then something far. Repeat 10 times.",
+                "🔵 Figure 8\nTrace an imaginary figure 8 with your eyes 5 times, 10 feet away.",
+                "⬆ Eye Movements\nLook up, down, left, right for 3 seconds each without moving your head.",
+                "🌀 Eye Rolls\nRoll your eyes in circles 5 times clockwise, then counterclockwise.",
+                "👆 Near & Far\nFocus on your thumb at arm's length, then something far for 5 seconds each.",
+                "✋ Palming\nCup your palms over closed eyes for 30 seconds, breathing deeply.",
+                "💧 Rapid Blinks\nBlink rapidly 10 times to stimulate tear production.",
+                "😴 Rest & Breathe\nClose your eyes, take 5 deep breaths, and relax for 30 seconds."
+            )
+            return exercises[java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) % exercises.size]
+        }
 
-        private val MILESTONE_30_MESSAGES = listOf(
-            "You've used 30% of your limit. Stay mindful!",
-            "Great start! You have 70% left.",
-            "30% used. Keep up the balanced usage!",
-            "On track! Most of your time is still available.",
-            "Nice control! 70% remaining for today.",
-            "You're doing well! 30% milestone reached.",
-            "Stay focused! You still have plenty of time left.",
-            "Good progress! Remember to take breaks.",
-            "30% done! Use your remaining time wisely.",
-            "Keep going! You're managing your time well."
-        )
+        private fun getDailyPhysicalActivity(): String {
+            val activities = arrayOf(
+                "🚶 Quick Walk\nTake a 5-10 minute walk to refresh your mind and body.",
+                "🧘 Stretch Break\nDo 5 minutes of neck, shoulder, and back stretches.",
+                "🏃 Cardio Burst\nDo 2 minutes of jumping jacks or high knees.",
+                "🎯 Active Game\nPlay catch or juggle for 5 minutes to stay active.",
+                "💪 Bodyweight Workout\nDo 10 push-ups, 15 squats, or a 30-second plank.",
+                "🌿 Nature Moment\nStep outside and observe nature for 5 minutes.",
+                "🎵 Dance Party\nDance to a favorite song for 3-5 minutes.",
+                "🧘‍♀ Meditation\nPractice 5 minutes of deep breathing or meditation.",
+                "🏠 Quick Chore\nOrganize your desk or water plants for 5 minutes.",
+                "📞 Social Break\nCall a friend for a quick, uplifting chat."
+            )
+            return activities[(java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) + 5) % activities.size]
+        }
 
-        private val MILESTONE_70_MESSAGES = listOf(
-            "70% of your limit used. Time to slow down!",
-            "Alert! Only 30% of your time remains.",
-            "You're at 70%! Consider taking a break soon.",
-            "Running low! 30% left for today.",
-            "Careful! You've used most of your time.",
-            "70% milestone! Make your last 30% count.",
-            "Time check! You're running out quickly.",
-            "Heads up! Better wrap things up soon.",
-            "70% used! Plan your remaining time wisely.",
-            "Almost there! Use your last 30% mindfully."
-        )
-
-        private val MILESTONE_100_MESSAGES = listOf(
-            "Time's up! Take a break and recharge.",
-            "Limit reached! It's time to disconnect.",
-            "100%! Your brain deserves a rest now.",
-            "Well done! Now take a healthy break.",
-            "Time limit reached. Go do something offline!",
-            "You've reached your limit. Time to unplug!",
-            "Screen time over! Try something different now.",
-            "Limit hit! Your eyes will thank you for a break.",
-            "That's enough screen time! Go refresh yourself.",
-            "100% done! Step away and enjoy the real world."
-        )
-
-        private val BLOCKED_MESSAGES = listOf(
-            "App blocked! Time to focus on other things.",
-            "Blocked! Your wellbeing comes first.",
-            "Time limit exceeded! Take a breather.",
-            "App locked! Let's do something productive.",
-            "Blocked for your health! Try a walk instead.",
-            "Limit reached! Your future self will thank you.",
-            "App blocked! Disconnect to reconnect with life.",
-            "Time's up! Go enjoy the world around you.",
-            "Blocked! Balance is the key to happiness.",
-            "Locked! Use this time for self-improvement."
-        )
+        private fun getDailyMotivation(): String {
+            val motivations = arrayOf(
+                "🌱 Reflect\n\"Take 5 minutes to think about your goals and dreams.\"",
+                "🧠 Mindful Break\n\"Give your brain a rest with 5 minutes of quiet breathing.\"",
+                "💭 Creative Spark\n\"Let your mind wander freely for new ideas.\"",
+                "🌍 Real World\n\"Step outside and experience the world beyond screens.\"",
+                "💪 Willpower Win\n\"You're mastering technology with every break you take!\"",
+                "🎯 Focus Boost\n\"Screen breaks enhance your focus across all tasks.\"",
+                "⚖ Balance\n\"You're creating a healthier tech-life balance.\"",
+                "🌟 Be Present\n\"Embrace the moment without digital distractions.\"",
+                "🧘 Inner Peace\n\"Connect with yourself in a quiet moment.\"",
+                "🚀 Productivity\n\"Breaks boost productivity by 23%. Keep it up!\""
+            )
+            return motivations[(java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR) + 10) % motivations.size]
+        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
     private var isRunning = false
     private var foregroundStarted = false
 
-    private val appLimits = ConcurrentHashMap<String, Int>()
-    private val appUsage = ConcurrentHashMap<String, Int>()
+    // Data structure: packageName -> [startTimeMillis, limitSeconds]
+    private val appTimers = ConcurrentHashMap<String, Pair<Long, Int>>()
     private val blockedApps = ConcurrentHashMap.newKeySet<String>()
     private val milestoneFlags = ConcurrentHashMap<String, MutableSet<Int>>()
     private val shownWelcomeNotifications = ConcurrentHashMap.newKeySet<String>()
 
     private var currentForegroundPkg: String? = null
-    private var appStartTime: Long = 0
 
     private val foregroundReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -183,18 +171,20 @@ class AppMonitorService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startMonitoring() {
+        // Check ALL timers every second (whether app is open or not)
         handler.post(object : Runnable {
             override fun run() {
                 if (!isRunning) return
                 try {
-                    trackCurrentApp()
+                    checkAllTimers()
                 } catch (e: Exception) {
-                    Log.e("AppMonitorService", "Tracking error: ${e.message}")
+                    Log.e("AppMonitorService", "Timer check error: ${e.message}")
                 }
-                handler.postDelayed(this, 1000)
+                handler.postDelayed(this, 1000) // Every 1 second
             }
         })
 
+        // Detect foreground app (for blocking screen)
         handler.post(object : Runnable {
             override fun run() {
                 if (!isRunning) return
@@ -206,103 +196,103 @@ class AppMonitorService : Service() {
                 } catch (e: Exception) {
                     Log.e("AppMonitorService", "UsageStats error: ${e.message}")
                 }
-                handler.postDelayed(this, 3000)
+                handler.postDelayed(this, 2000)
             }
         })
 
+        // Save state periodically
         handler.post(object : Runnable {
             override fun run() {
                 if (!isRunning) return
                 saveState()
-                handler.postDelayed(this, 5000)
+                handler.postDelayed(this, 10000) // Every 10 seconds
             }
         })
     }
 
-    private fun onForegroundAppChanged(packageName: String) {
-        val now = System.currentTimeMillis()
+    private fun checkAllTimers() {
+        val currentTime = System.currentTimeMillis()
 
-        currentForegroundPkg?.let { prevPkg ->
-            if (isMonitored(prevPkg) && appStartTime > 0) {
-                val duration = ((now - appStartTime) / 1000).toInt()
-                if (duration > 0) {
-                    incrementUsage(prevPkg, duration)
-                }
+        for ((pkg, timerData) in appTimers) {
+            val (startTime, limitSeconds) = timerData
+
+            // Calculate elapsed time since monitoring started
+            val elapsedSeconds = ((currentTime - startTime) / 1000).toInt()
+            val remainingSeconds = limitSeconds - elapsedSeconds
+
+            // Check if time is up
+            if (remainingSeconds <= 0 && !blockedApps.contains(pkg)) {
+                // TIME'S UP - BLOCK THE APP
+                Log.d("AppMonitorService", "⏰ TIME'S UP for $pkg (${elapsedSeconds}s / ${limitSeconds}s)")
+                blockApp(pkg, limitSeconds)
+            } else if (remainingSeconds > 0) {
+                // Still time remaining - check milestones
+                val percentage = (elapsedSeconds.toDouble() / limitSeconds.toDouble() * 100).toInt()
+                checkAndNotifyMilestone(pkg, percentage, elapsedSeconds, limitSeconds)
             }
         }
+    }
 
+    private fun onForegroundAppChanged(packageName: String) {
         currentForegroundPkg = packageName
-        appStartTime = now
+        Log.d("AppMonitorService", "📱 Foreground app: $packageName")
 
-        Log.d("AppMonitorService", "📱 App changed: $packageName")
-
-        if (isMonitored(packageName) && !shownWelcomeNotifications.contains(packageName)) {
+        // Show welcome notification first time
+        if (appTimers.containsKey(packageName) && !shownWelcomeNotifications.contains(packageName)) {
             showMonitoringStartNotification(packageName)
             shownWelcomeNotifications.add(packageName)
         }
 
+        // If app is blocked, show blocking screen ONCE (don't loop)
         if (blockedApps.contains(packageName)) {
-            launchBlockingActivity(packageName)
-        }
-    }
+            Log.d("AppMonitorService", "🚫 Blocked app opened: $packageName")
 
-    private fun trackCurrentApp() {
-        val pkg = currentForegroundPkg ?: return
-        if (!isMonitored(pkg)) return
-        if (blockedApps.contains(pkg)) {
-            launchBlockingActivity(pkg)
-            return
-        }
-        incrementUsage(pkg, 1)
-    }
+            // Check if BlockingActivity is already showing
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val runningTasks = am.appTasks
+            var blockingActivityShowing = false
 
-    private fun incrementUsage(packageName: String, seconds: Int) {
-        val newUsage = (appUsage[packageName] ?: 0) + seconds
-        appUsage[packageName] = newUsage
+            for (task in runningTasks) {
+                val topActivity = task.taskInfo.topActivity
+                if (topActivity?.className == "com.example.my_app.BlockingActivity") {
+                    blockingActivityShowing = true
+                    break
+                }
+            }
 
-        val limit = appLimits[packageName] ?: 0
-
-        Log.d("AppMonitorService", "📊 $packageName: ${newUsage}s / ${limit}s")
-
-        if (limit > 0) {
-            val percentage = (newUsage.toDouble() / limit.toDouble() * 100).toInt()
-            checkAndNotifyMilestone(packageName, percentage, newUsage, limit)
-        }
-
-        if (limit > 0 && newUsage >= limit && !blockedApps.contains(packageName)) {
-            blockApp(packageName, newUsage, limit)
-        }
-    }
-
-    private fun checkAndNotifyMilestone(pkg: String, percentage: Int, usage: Int, limit: Int) {
-        val flags = milestoneFlags.getOrPut(pkg) { mutableSetOf() }
-
-        val milestones = listOf(30, 70, 100)
-        for (milestone in milestones) {
-            if (percentage >= milestone && !flags.contains(milestone)) {
-                flags.add(milestone)
-                sendMilestoneNotification(pkg, milestone, usage, limit)
+            // Only launch if not already showing
+            if (!blockingActivityShowing) {
+                launchBlockingActivity(packageName)
             }
         }
     }
 
-    private fun getRandomMessage(messages: List<String>): String {
-        return messages[Random.nextInt(messages.size)]
+    private fun checkAndNotifyMilestone(pkg: String, percentage: Int, elapsed: Int, limit: Int) {
+        val flags = milestoneFlags.getOrPut(pkg) { mutableSetOf() }
+
+        val milestones = listOf(30, 70)
+        for (milestone in milestones) {
+            if (percentage >= milestone && !flags.contains(milestone)) {
+                flags.add(milestone)
+                sendMilestoneNotification(pkg, milestone, elapsed, limit)
+            }
+        }
     }
 
     private fun showMonitoringStartNotification(packageName: String) {
         val appName = getAppName(packageName)
-        val limit = appLimits[packageName] ?: 0
-        val limitText = formatSeconds(limit)
+        val timerData = appTimers[packageName] ?: return
+        val limitSeconds = timerData.second
+        val limitText = formatSeconds(limitSeconds)
 
-        val message = getRandomMessage(WELCOME_MESSAGES)
+        val message = getDailyMotivation()
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("🔍 $appName - Monitoring Started")
-            .setContentText(message)
+            .setContentTitle("⏱️ $appName - Timer Active")
+            .setContentText("Time limit: $limitText")
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("$message\n\nTime limit: $limitText"))
+                .bigText("$message\n\nThis app will be blocked after $limitText from now."))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setVibrate(longArrayOf(0, 300, 100, 300))
@@ -311,34 +301,32 @@ class AppMonitorService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(packageName.hashCode(), notification)
 
-        Log.d("AppMonitorService", "🔔 Welcome: $message")
+        Log.d("AppMonitorService", "🔔 Welcome notification for $appName")
     }
 
-    private fun sendMilestoneNotification(packageName: String, milestone: Int, usage: Int, limit: Int) {
+    private fun sendMilestoneNotification(packageName: String, milestone: Int, elapsed: Int, limit: Int) {
         val appName = getAppName(packageName)
-        val usageText = formatSeconds(usage)
-        val limitText = formatSeconds(limit)
+        val remainingSeconds = limit - elapsed
+        val remainingText = formatSeconds(remainingSeconds)
 
         val message = when (milestone) {
-            30 -> getRandomMessage(MILESTONE_30_MESSAGES)
-            70 -> getRandomMessage(MILESTONE_70_MESSAGES)
-            100 -> getRandomMessage(MILESTONE_100_MESSAGES)
-            else -> "Milestone $milestone% reached"
+            30 -> getDailyEyeExercise()
+            70 -> getDailyPhysicalActivity()
+            else -> getDailyMotivation()
         }
 
         val emoji = when (milestone) {
             30 -> "🟢"
             70 -> "🟡"
-            100 -> "🔴"
             else -> "📊"
         }
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("$emoji $appName - $milestone% Used")
-            .setContentText(message)
+            .setContentTitle("$emoji $appName - $milestone% Time Used")
+            .setContentText("$remainingText remaining")
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("$message\n\nUsage: $usageText / $limitText"))
+                .bigText("$message\n\n⏱️ Remaining: $remainingText"))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setVibrate(longArrayOf(0, 500, 200, 500))
@@ -347,30 +335,25 @@ class AppMonitorService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify((packageName.hashCode() + milestone), notification)
 
-        Log.d("AppMonitorService", "🔔 $milestone%: $message")
+        Log.d("AppMonitorService", "🔔 $milestone% milestone for $appName")
     }
 
-    private fun blockApp(packageName: String, usage: Int, limit: Int) {
+    private fun blockApp(packageName: String, limitSeconds: Int) {
         blockedApps.add(packageName)
-        sendBlockedNotification(packageName, usage, limit)
-        launchBlockingActivity(packageName)
-        saveState()
-        Log.d("AppMonitorService", "🚫 Blocked: $packageName")
-    }
 
-    private fun sendBlockedNotification(packageName: String, usage: Int, limit: Int) {
         val appName = getAppName(packageName)
-        val usageText = formatSeconds(usage)
-        val limitText = formatSeconds(limit)
+        val limitText = formatSeconds(limitSeconds)
 
-        val message = getRandomMessage(BLOCKED_MESSAGES)
+        Log.d("AppMonitorService", "🚫 BLOCKING $appName (timer expired: $limitText)")
 
+        // Send blocked notification
+        val message = getDailyPhysicalActivity()
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_delete)
-            .setContentTitle("🚫 $appName - Blocked")
-            .setContentText(message)
+            .setContentTitle("🚫 $appName - BLOCKED")
+            .setContentText("Time limit reached!")
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("$message\n\nUsage: $usageText / $limitText"))
+                .bigText("$message\n\n⏰ Time limit ($limitText) has expired."))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setAutoCancel(false)
             .setOngoing(true)
@@ -380,21 +363,108 @@ class AppMonitorService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(packageName.hashCode() + 999, notification)
 
-        Log.d("AppMonitorService", "🔔 Blocked: $message")
+        // If user is currently using this app, show blocking screen
+        if (packageName == currentForegroundPkg) {
+            launchBlockingActivity(packageName)
+        }
+
+        saveState()
     }
+
+// Update launchBlockingActivity method
+
+// Replace launchBlockingActivity method
 
     private fun launchBlockingActivity(packageName: String) {
         try {
+            Log.d("AppMonitorService", "🚀 Blocking: $packageName")
+
+            // Strategy 1: Try overlay service first (most reliable)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    Log.d("AppMonitorService", "✅ Using overlay service")
+                    val overlayIntent = Intent(this, OverlayBlockingService::class.java).apply {
+                        putExtra(OverlayBlockingService.EXTRA_PACKAGE, packageName)
+                    }
+                    startService(overlayIntent)
+                    return
+                } else {
+                    Log.w("AppMonitorService", "⚠️ No overlay permission - fallback to activity")
+                }
+            }
+
+            // Strategy 2: Standard activity launch
             val intent = Intent(this, BlockingActivity::class.java).apply {
                 putExtra("packageName", packageName)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                )
             }
             startActivity(intent)
+
+            // Strategy 3: Retry with different flags
+            handler.postDelayed({
+                if (blockedApps.contains(packageName) &&
+                    !BlockingActivity.isShowing &&
+                    !OverlayBlockingService.isOverlayShowing) {
+
+                    Log.d("AppMonitorService", "🔁 Retry: Re-launching")
+                    val retryIntent = Intent(this, BlockingActivity::class.java).apply {
+                        putExtra("packageName", packageName)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                    }
+                    startActivity(retryIntent)
+                }
+            }, 500)
+
+            // Strategy 4: Full screen notification (last resort)
+            handler.postDelayed({
+                if (blockedApps.contains(packageName) &&
+                    !BlockingActivity.isShowing &&
+                    !OverlayBlockingService.isOverlayShowing) {
+
+                    Log.d("AppMonitorService", "🔁 Last resort: Full screen notification")
+                    showFullScreenNotification(packageName)
+                }
+            }, 1500)
+
         } catch (e: Exception) {
-            Log.e("AppMonitorService", "Failed to launch BlockingActivity: ${e.message}")
+            Log.e("AppMonitorService", "❌ Failed to block: ${e.message}", e)
         }
     }
 
+    private fun showFullScreenNotification(packageName: String) {
+        val appName = getAppName(packageName)
+
+        val fullScreenIntent = Intent(this, BlockingActivity::class.java).apply {
+            putExtra("packageName", packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+
+        val fullScreenPendingIntent = android.app.PendingIntent.getActivity(
+            this,
+            packageName.hashCode() + 1000,
+            fullScreenIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_delete)
+            .setContentTitle("🚫 $appName BLOCKED")
+            .setContentText("Time limit reached - Tap to manage")
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setFullScreenIntent(fullScreenPendingIntent, true)
+            .setAutoCancel(false)
+            .setOngoing(true)
+            .setVibrate(longArrayOf(0, 500, 200, 500))
+            .build()
+
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(packageName.hashCode() + 2000, notification)
+    }
     private fun getForegroundAppViaUsageStats(): String? {
         try {
             val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -413,12 +483,9 @@ class AppMonitorService : Service() {
             }
             return lastPkg
         } catch (e: Exception) {
-            Log.e("AppMonitorService", "UsageStats query failed: ${e.message}")
             return null
         }
     }
-
-    private fun isMonitored(pkg: String): Boolean = appLimits.containsKey(pkg)
 
     private fun getAppName(packageName: String): String = try {
         packageManager.getApplicationLabel(
@@ -431,19 +498,18 @@ class AppMonitorService : Service() {
     private fun formatSeconds(seconds: Int): String {
         val h = seconds / 3600
         val m = (seconds % 3600) / 60
-        val s = seconds % 60
         return when {
             h > 0 -> "${h}h ${m}m"
-            m > 0 -> "${m}m ${s}s"
-            else -> "${s}s"
+            m > 0 -> "${m}m"
+            else -> "${seconds}s"
         }
     }
 
     private fun createPersistentNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
-            .setContentTitle("📱 Digital Wellbeing Active")
-            .setContentText("Monitoring your app usage")
+            .setContentTitle("⏱️ Digital Wellbeing Active")
+            .setContentText("${appTimers.size} app timers running")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
@@ -453,10 +519,10 @@ class AppMonitorService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "App Usage Monitor",
+                "App Timer Monitor",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Monitors app usage and sends thoughtful notifications"
+                description = "Countdown timers for app limits"
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 300, 100, 300)
             }
@@ -470,35 +536,25 @@ class AppMonitorService : Service() {
             val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             val editor = prefs.edit()
 
-            val usageArray = JSONArray()
-            appUsage.forEach { (pkg, usage) ->
-                usageArray.put(JSONObject().apply {
+            // Save timers: [startTime, limit]
+            val timersArray = JSONArray()
+            appTimers.forEach { (pkg, timerData) ->
+                timersArray.put(JSONObject().apply {
                     put("pkg", pkg)
-                    put("usage", usage)
+                    put("startTime", timerData.first)
+                    put("limit", timerData.second)
                 })
             }
-            editor.putString(KEY_USAGE, usageArray.toString())
+            editor.putString(KEY_APP_TIMERS, timersArray.toString())
 
-            val limitsArray = JSONArray()
-            appLimits.forEach { (pkg, limit) ->
-                limitsArray.put(JSONObject().apply {
-                    put("pkg", pkg)
-                    put("limit", limit)
-                })
-            }
-            editor.putString(KEY_LIMITS, limitsArray.toString())
-
+            // Save blocked apps
             val blockedArray = JSONArray()
             blockedApps.forEach { blockedArray.put(it) }
             editor.putString(KEY_BLOCKED, blockedArray.toString())
 
-            val welcomeArray = JSONArray()
-            shownWelcomeNotifications.forEach { welcomeArray.put(it) }
-            editor.putString(KEY_SHOWN_WELCOME, welcomeArray.toString())
-
             editor.apply()
         } catch (e: Exception) {
-            Log.e("AppMonitorService", "Save state error: ${e.message}")
+            Log.e("AppMonitorService", "Save error: ${e.message}")
         }
     }
 
@@ -506,22 +562,19 @@ class AppMonitorService : Service() {
         try {
             val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
-            prefs.getString(KEY_USAGE, null)?.let { json ->
+            // Restore timers
+            prefs.getString(KEY_APP_TIMERS, null)?.let { json ->
                 val array = JSONArray(json)
                 for (i in 0 until array.length()) {
                     val obj = array.getJSONObject(i)
-                    appUsage[obj.getString("pkg")] = obj.getInt("usage")
+                    val pkg = obj.getString("pkg")
+                    val startTime = obj.getLong("startTime")
+                    val limit = obj.getInt("limit")
+                    appTimers[pkg] = Pair(startTime, limit)
                 }
             }
 
-            prefs.getString(KEY_LIMITS, null)?.let { json ->
-                val array = JSONArray(json)
-                for (i in 0 until array.length()) {
-                    val obj = array.getJSONObject(i)
-                    appLimits[obj.getString("pkg")] = obj.getInt("limit")
-                }
-            }
-
+            // Restore blocked apps
             prefs.getString(KEY_BLOCKED, null)?.let { json ->
                 val array = JSONArray(json)
                 for (i in 0 until array.length()) {
@@ -529,45 +582,40 @@ class AppMonitorService : Service() {
                 }
             }
 
-            prefs.getString(KEY_SHOWN_WELCOME, null)?.let { json ->
-                val array = JSONArray(json)
-                for (i in 0 until array.length()) {
-                    shownWelcomeNotifications.add(array.getString(i))
-                }
-            }
-
-            Log.d("AppMonitorService", "📂 State restored: ${appLimits.size} apps")
+            Log.d("AppMonitorService", "📂 State restored: ${appTimers.size} timers, ${blockedApps.size} blocked")
         } catch (e: Exception) {
-            Log.e("AppMonitorService", "Restore state error: ${e.message}")
+            Log.e("AppMonitorService", "Restore error: ${e.message}")
         }
     }
 
     fun restartMonitoring(apps: List<Map<String, Any?>>) {
-        appLimits.clear()
+        appTimers.clear()
+        blockedApps.clear()
         milestoneFlags.clear()
         shownWelcomeNotifications.clear()
+
+        val currentTime = System.currentTimeMillis()
 
         for (app in apps) {
             val pkg = app["packageName"] as String
             val limit = (app["limitSeconds"] as? Number)?.toInt() ?: 0
-            val usage = (app["usageSeconds"] as? Number)?.toInt() ?: (appUsage[pkg] ?: 0)
-            val blocked = app["blocked"] as? Boolean ?: false
 
-            appLimits[pkg] = limit
-            appUsage[pkg] = usage
-            if (blocked) blockedApps.add(pkg) else blockedApps.remove(pkg)
+            if (limit > 0) {
+                // START TIMER NOW
+                appTimers[pkg] = Pair(currentTime, limit)
+                Log.d("AppMonitorService", "⏱️ TIMER STARTED: $pkg → ${formatSeconds(limit)} from NOW")
+            }
         }
 
         saveState()
-        Log.d("AppMonitorService", "🔄 Monitoring restarted: ${apps.size} apps")
+        Log.d("AppMonitorService", "🔄 ${appTimers.size} timers started")
     }
 
     fun unblockApp(packageName: String) {
-        Log.d("AppMonitorService", "🔓 UNBLOCKING (REMOVING): $packageName")
+        Log.d("AppMonitorService", "🔓 UNBLOCKING: $packageName")
 
+        appTimers.remove(packageName)
         blockedApps.remove(packageName)
-        appUsage.remove(packageName)
-        appLimits.remove(packageName)
         milestoneFlags.remove(packageName)
         shownWelcomeNotifications.remove(packageName)
 
@@ -575,73 +623,32 @@ class AppMonitorService : Service() {
         nm.cancel(packageName.hashCode())
         nm.cancel(packageName.hashCode() + 30)
         nm.cancel(packageName.hashCode() + 70)
-        nm.cancel(packageName.hashCode() + 100)
         nm.cancel(packageName.hashCode() + 999)
 
         saveState()
-
-        try {
-            val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            val editor = prefs.edit()
-
-            val usageArray = JSONArray()
-            appUsage.forEach { (pkg, usage) ->
-                usageArray.put(JSONObject().apply {
-                    put("pkg", pkg)
-                    put("usage", usage)
-                })
-            }
-            editor.putString(KEY_USAGE, usageArray.toString())
-
-            val limitsArray = JSONArray()
-            appLimits.forEach { (pkg, limit) ->
-                limitsArray.put(JSONObject().apply {
-                    put("pkg", pkg)
-                    put("limit", limit)
-                })
-            }
-            editor.putString(KEY_LIMITS, limitsArray.toString())
-
-            val blockedArray = JSONArray()
-            blockedApps.forEach { blockedArray.put(it) }
-            editor.putString(KEY_BLOCKED, blockedArray.toString())
-
-            val welcomeArray = JSONArray()
-            shownWelcomeNotifications.forEach { welcomeArray.put(it) }
-            editor.putString(KEY_SHOWN_WELCOME, welcomeArray.toString())
-
-            editor.commit()
-        } catch (e: Exception) {
-            Log.e("AppMonitorService", "Cache clear error: ${e.message}")
-        }
-
-        Log.d("AppMonitorService", "✅ UNBLOCK COMPLETE")
+        Log.d("AppMonitorService", "✅ Unblocked and timer removed")
     }
 
     fun getBlockedApps(): List<String> = blockedApps.toList()
 
     fun getUsageSnapshot(): List<Map<String, Any>> {
-        return appUsage.map { (pkg, usage) ->
+        val currentTime = System.currentTimeMillis()
+
+        return appTimers.map { (pkg, timerData) ->
+            val (startTime, limit) = timerData
+            val elapsedSeconds = ((currentTime - startTime) / 1000).toInt()
+
             mapOf(
                 "packageName" to pkg,
-                "usageSeconds" to usage,
-                "limitSeconds" to (appLimits[pkg] ?: 0),
+                "usageSeconds" to elapsedSeconds,
+                "limitSeconds" to limit,
                 "blocked" to blockedApps.contains(pkg)
             )
         }
     }
 
     fun usageUpdate(packageName: String, usageSeconds: Int, limitSeconds: Int) {
-        appUsage[packageName] = usageSeconds
-        appLimits[packageName] = limitSeconds
-        if (limitSeconds > 0) {
-            val percentage = (usageSeconds.toDouble() / limitSeconds.toDouble() * 100).toInt()
-            checkAndNotifyMilestone(packageName, percentage, usageSeconds, limitSeconds)
-        }
-        if (usageSeconds >= limitSeconds && limitSeconds > 0) {
-            blockApp(packageName, usageSeconds, limitSeconds)
-        }
-        saveState()
+        // Not needed in timer-based system
     }
 }
 

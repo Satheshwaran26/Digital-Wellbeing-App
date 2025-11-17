@@ -237,6 +237,39 @@ class AppUsageTracker {
     }
   }
 
+
+
+  Future<List<MonitoredApp>> getInstalledApps() async {
+    try {
+      final result = await _channel.invokeMethod('getInstalledApps');
+      if (result is List) {
+        return result.map((item) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return MonitoredApp(
+            packageName: map['packageName'] as String,
+            appName: map['appName'] as String,
+            iconData: map['iconData'] as Uint8List?,
+          );
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting installed apps: $e');
+      return [];
+    }
+  }
+
+
+  Future<void> requestOverlayPermission() async {
+    try {
+      await _channel.invokeMethod('requestOverlayPermission');
+    } catch (e) {
+      debugPrint('Error requesting overlay permission: $e');
+    }
+  }
+
+
+
   Future<void> restartNativeMonitoring() async {
     final apps = await getMonitoredApps();
     final payload = apps.map((e) {

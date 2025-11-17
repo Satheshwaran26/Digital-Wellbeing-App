@@ -8,7 +8,10 @@ class GridPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Background color (black)
     final backgroundPaint = Paint()..color = const Color(0xFF000000);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      backgroundPaint,
+    );
 
     // Grid line paint (light dark blue)
     final gridPaint = Paint()
@@ -36,10 +39,10 @@ class GoogleLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final scale = size.width / 48.0; // SVG viewBox is 48x48
-    
+
     canvas.save();
     canvas.scale(scale);
-    
+
     // Yellow path
     final yellowPath = Path()
       ..moveTo(43.611, 20.083)
@@ -59,12 +62,9 @@ class GoogleLogoPainter extends CustomPainter {
       ..cubicTo(35.045, 44, 44, 35.045, 44, 24)
       ..cubicTo(44, 22.659, 43.862, 21.35, 43.611, 20.083)
       ..close();
-    
-    canvas.drawPath(
-      yellowPath,
-      Paint()..color = const Color(0xFFFFC107),
-    );
-    
+
+    canvas.drawPath(yellowPath, Paint()..color = const Color(0xFFFFC107));
+
     // Red path
     final redPath = Path()
       ..moveTo(6.306, 14.691)
@@ -75,12 +75,9 @@ class GoogleLogoPainter extends CustomPainter {
       ..cubicTo(34.046, 6.053, 29.268, 4, 24, 4)
       ..cubicTo(16.318, 4, 9.656, 8.337, 6.306, 14.691)
       ..close();
-    
-    canvas.drawPath(
-      redPath,
-      Paint()..color = const Color(0xFFFF3D00),
-    );
-    
+
+    canvas.drawPath(redPath, Paint()..color = const Color(0xFFFF3D00));
+
     // Green path
     final greenPath = Path()
       ..moveTo(24, 44)
@@ -91,12 +88,9 @@ class GoogleLogoPainter extends CustomPainter {
       ..lineTo(6.195, 33.079)
       ..cubicTo(9.505, 39.556, 16.227, 44, 24, 44)
       ..close();
-    
-    canvas.drawPath(
-      greenPath,
-      Paint()..color = const Color(0xFF4CAF50),
-    );
-    
+
+    canvas.drawPath(greenPath, Paint()..color = const Color(0xFF4CAF50));
+
     // Blue path
     final bluePath = Path()
       ..moveTo(43.611, 20.083)
@@ -111,15 +105,12 @@ class GoogleLogoPainter extends CustomPainter {
       ..cubicTo(36.971, 39.205, 44, 34, 44, 24)
       ..cubicTo(44, 22.659, 43.862, 21.35, 43.611, 20.083)
       ..close();
-    
-    canvas.drawPath(
-      bluePath,
-      Paint()..color = const Color(0xFF1976D2),
-    );
-    
+
+    canvas.drawPath(bluePath, Paint()..color = const Color(0xFF1976D2));
+
     canvas.restore();
   }
-  
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
@@ -144,248 +135,264 @@ class LoginPage extends StatelessWidget {
               color: Color(0xFF000000), // Black background
             ),
             child: Stack(
-            children: [
-              // Grid background
-              CustomPaint(
-                painter: GridPainter(),
-                size: Size.infinite,
-              ),
-              // Main content
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Icon container with border
-                      Container(
-                        width: 96,
-                        height: 96,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color.fromARGB(255, 21, 104, 193),
-                            width: 1,
+              children: [
+                // Grid background
+                CustomPaint(painter: GridPainter(), size: Size.infinite),
+                // Main content
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // App Logo
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF007BFF).withOpacity(0.1),
+                                const Color(0xFF007BFF).withOpacity(0.05),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: const Color(0xFF007BFF).withOpacity(0.3),
+                              width: 1.5,
+                            ),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color.fromARGB(255, 8, 117, 226).withOpacity(0.3),
-                              blurRadius: 20,
-                              spreadRadius: 5,
+                          child: Container(
+                            padding: const EdgeInsets.all(1.0),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black, // ✅ Inner background color
+                            ),
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/images/app-icon1.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
+                        // Title
+                        const Text(
+                          'Welcome To Digital Wellbeing',
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: -0.8,
+                            height: 1.2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        // Subtitle
+                        Text(
+                          'Take control of your screen time and build healthier digital habits.',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFFB0BEC5),
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+
+                        const SizedBox(height: 40),
+                        // Google Sign In Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // Navigate to main navigation after login
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (context) => const MainNavigation(),
+                                ),
+                              );
+                            },
+                            style:
+                            ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                  color: const Color.fromARGB(
+                                    255,
+                                    27,
+                                    100,
+                                    178,
+                                  ),
+                                  width: 1,
+                                ),
+                              ),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16,
+                              ),
+                            ).copyWith(
+                              overlayColor: WidgetStateProperty.all(
+                                const Color(0xFF007BFF).withOpacity(0.2),
+                              ),
+                              shadowColor: WidgetStateProperty.all(
+                                const Color(0xFF007BFF).withOpacity(0.5),
+                              ),
+                              elevation: WidgetStateProperty.all(4),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CustomPaint(
+                                    painter: GoogleLogoPainter(),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Continue with Google',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Three points in one row with three columns
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            // Column 1
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.verified_user,
+                                    size: 20,
+                                    color: const Color(0xFF007BFF),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Secure',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFB0BEC5),
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Column 2
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.access_time_filled,
+                                    size: 20,
+                                    color: const Color(0xFF007BFF),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Quick',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFB0BEC5),
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Column 3
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.track_changes,
+                                    size: 20,
+                                    color: const Color(0xFF007BFF),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Track',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFB0BEC5),
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        child: const Icon(
-                          Icons.self_improvement,
-                          color: Color(0xFF007BFF),
-                          size: 48,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      // Title
-                      const Text(
-                        'Welcome To Digital Wellbeing',
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: -0.8,
-                          height: 1.2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      // Subtitle
-                      Text(
-                        'Take control of your screen time and build healthier digital habits.',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFFB0BEC5),
-                          height: 1.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                  
-                      const SizedBox(height: 40),
-                      // Google Sign In Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Navigate to main navigation after login
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) => const MainNavigation(),
+                        const SizedBox(height: 32),
+                        // Terms and Privacy
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: RichText(
+                            textAlign: TextAlign.center,
+                            text: const TextSpan(
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF90A4AE),
+                                height: 1.5,
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(
-                                color: const Color.fromARGB(255, 27, 100, 178),
-                                width: 1,
-                              ),
-                            ),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ).copyWith(
-                            overlayColor: WidgetStateProperty.all(
-                              const Color(0xFF007BFF).withOpacity(0.2),
-                            ),
-                            shadowColor: WidgetStateProperty.all(
-                              const Color(0xFF007BFF).withOpacity(0.5),
-                            ),
-                            elevation: WidgetStateProperty.all(4),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CustomPaint(
-                                  painter: GoogleLogoPainter(),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Continue with Google',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Three points in one row with three columns
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          // Column 1
-                          Expanded(
-                            child: Column(
                               children: [
-                                Icon(
-                                  Icons.verified_user,
-                                  size: 20,
-                                  color: const Color(0xFF007BFF),
+                                TextSpan(
+                                  text: 'By continuing, you agree to our ',
                                 ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  'Secure',
+                                TextSpan(
+                                  text: 'Terms of Service',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFB0BEC5),
-                                    fontWeight: FontWeight.w400,
+                                    color: Color(0xFF007BFF),
+                                    decoration: TextDecoration.underline,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  textAlign: TextAlign.center,
+                                ),
+                                TextSpan(text: ' and '),
+                                TextSpan(
+                                  text: 'Privacy Policy',
+                                  style: TextStyle(
+                                    color: Color(0xFF007BFF),
+                                    decoration: TextDecoration.underline,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          // Column 2
-                          Expanded(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.access_time_filled,
-                                  size: 20,
-                                  color: const Color(0xFF007BFF),
-                                ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  'Quick',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFB0BEC5),
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Column 3
-                          Expanded(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.track_changes,
-                                  size: 20,
-                                  color: const Color(0xFF007BFF),
-                                ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  'Track',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFB0BEC5),
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 32),
-                      // Terms and Privacy
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: RichText(
-                          textAlign: TextAlign.center,
-                          text: const TextSpan(
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF90A4AE),
-                              height: 1.5,
-                            ),
-                            children: [
-                              TextSpan(text: 'By continuing, you agree to our '),
-                              TextSpan(
-                                text: 'Terms of Service',
-                                style: TextStyle(
-                                  color: Color(0xFF007BFF),
-                                  decoration: TextDecoration.underline,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              TextSpan(text: ' and '),
-                              TextSpan(
-                                text: 'Privacy Policy',
-                                style: TextStyle(
-                                  color: Color(0xFF007BFF),
-                                  decoration: TextDecoration.underline,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-      ),
     );
   }
-
 }

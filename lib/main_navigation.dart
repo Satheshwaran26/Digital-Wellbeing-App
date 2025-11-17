@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:my_app/weekly_dashboard.dart';
 import 'home_page.dart';
 import 'focus_mode_page.dart';
 import 'settings_page.dart';
@@ -40,7 +41,7 @@ class _MainNavigationState extends State<MainNavigation> with WidgetsBindingObse
       case 0:
         return HomePage(key: _homePageKey);
       case 1:
-        return const FocusModePage();
+        return const WeeklyDashboardPage();
       case 2:
         return const SettingsPage();
       default:
